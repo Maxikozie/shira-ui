@@ -173,47 +173,7 @@ class MBSong:
 		self.mb_artistid = None # artist mbid
 		self.debug = debug
 
-	# def fetch_song(self, max_retries: int = 3, backoff: float = 2.0):
-	# 	"""
-	# 	ping mb api to get song (/recording)
-	# 	subsequently calls fetch_arist if nothing is found
-	# 	"""
-	# 	params = {
-	# 		"query": f'{self.title} AND artist:"{self.artist}" AND release:"{self.album}"',
-	# 		**self.default_params
-	# 	}
 
-	# 	last_exc = None
-
-	# 	for attempt in range(1, max_retries + 1):
-	# 		try:
-	# 			res = self.req.get(
-	# 				f"{self.base}/recording",
-	# 				params=params,
-	# 				headers=self.head,
-	# 				timeout=10,  # add a timeout so it doesn't hang forever
-	# 			)
-	# 			res.raise_for_status()
-	# 			# existing parsing logic continues here
-	# 			...
-	# 			return
-	# 		except RequestException as e:
-	# 			last_exc = e
-	# 			if attempt == max_retries:
-	# 				# give up after N tries
-	# 				raise
-	# 			# simple backoff: 2s, 4s, 6s, ...
-	# 			time.sleep(backoff * attempt)
-				
-	# 	# res = self.req.get(f"{self.base}/recording", params=params, headers=self.head)
-	# 	# if self.debug:
-	# 	# 	print(res.url, res.status_code)
-	# 	# 	print("fetch_song query:", params["query"])
-	# 	# if res.status_code >= 200 and res.status_code < 300:
-	# 	# 	resjson = json.loads(res.text)
-	# 	# 	self.save_song_dict(resjson["recordings"])
-	# 	# else:
-	# 	# 	raise Exception(f"fetch_song: status code {res.status_code}")
 	def fetch_song(self, max_retries: int = 3, backoff: float = 2.0):
 		"""
 		ping mb api to get song (/recording)
