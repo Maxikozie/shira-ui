@@ -212,24 +212,6 @@ class Dl:
 	def get_cover_location(self, final_location):
 		return final_location.parent / f"Cover.{self.cover_format}"
 
-	# def download(self, video_id, temp_location):
-	# 	ydl_opts = {
-    # 		**self.default_ydl_opts,
-    # 		"format": f"{self.itag}/bestaudio/best/best",
-    # 		"outtmpl": str(temp_location),
-	# 	}
-
-	# 	# ydl_opts = {**self.default_ydl_opts, "format": self.itag, "outtmpl": str(temp_location)}
-
-	# 	if self.cookies_location is not None:
-	# 		ydl_opts["cookiefile"] = str(self.cookies_location)
-	# 	ydl_opts.setdefault("extractor_args", {})
-	# 	ydl_opts["extractor_args"].setdefault("youtube", {})
-	# 	ydl_opts["extractor_args"]["youtube"]["player_client"] = ["android_music", "android"]
-
-
-	# 	with YoutubeDL(ydl_opts) as ydl:
-	# 		ydl.download("music.youtube.com/watch?v=" + video_id)
 	def download(self, video_id, temp_location):
 		# Build the base URL
 		url = f"https://music.youtube.com/watch?v={video_id}"
@@ -302,4 +284,5 @@ class Dl:
 		result = subprocess.run(cmd, capture_output=True, text=True, check=True)
 		codec_info = json.loads(result.stdout)
 		# Extract and return codec name
+
 		return codec_info["streams"][0]["codec_name"]
