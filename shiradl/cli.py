@@ -1,3 +1,4 @@
+import requests
 import json
 import logging
 import shutil
@@ -5,6 +6,11 @@ from http.cookiejar import LoadError as CookieLoadError
 from pathlib import Path
 
 import click
+
+
+
+
+
 
 from . import __version__
 from .dl import Dl
@@ -160,7 +166,16 @@ def cli(
 					tags = dl.get_tags(ytmusic_watch_playlist, track)
 					is_single = tags["tracktotal"] == 1
 				logger.debug("Tags applied, fetching MusicBrainz Database")
-				tags = musicbrainz_enrich_tags(tags, dl.soundcloud, dl.exclude_tags)
+				# tags = musicbrainz_enrich_tags(tags, dl.soundcloud, dl.exclude_tags)
+
+				try:
+					tags = musicbrainz_enrich_tags(tags, dl.soundcloud, dl.exclude_tags)
+				except requests.exceptions.ConnectionError as e:
+					logger.warning(f"MusicBrainz lookup failed ({e}); continuing without MusicBrainz enrichment")
+					# just keep the original `tags` and continue
+				except requests.exceptions.RequestException as e:
+					logger.warning(f"MusicBrainz request error ({e}); continuing without MusicBrainz enrichment")
+
 				# pprint(tags)
 				logger.debug("Applied MusicBrainz Tags")
 				if cover_img:

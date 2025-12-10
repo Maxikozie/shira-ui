@@ -212,13 +212,50 @@ class Dl:
 	def get_cover_location(self, final_location):
 		return final_location.parent / f"Cover.{self.cover_format}"
 
-	def download(self, video_id, temp_location):
-		ydl_opts = {**self.default_ydl_opts, "format": self.itag, "outtmpl": str(temp_location)}
+	# def download(self, video_id, temp_location):
+	# 	ydl_opts = {
+    # 		**self.default_ydl_opts,
+    # 		"format": f"{self.itag}/bestaudio/best/best",
+    # 		"outtmpl": str(temp_location),
+	# 	}
 
+	# 	# ydl_opts = {**self.default_ydl_opts, "format": self.itag, "outtmpl": str(temp_location)}
+
+	# 	if self.cookies_location is not None:
+	# 		ydl_opts["cookiefile"] = str(self.cookies_location)
+	# 	ydl_opts.setdefault("extractor_args", {})
+	# 	ydl_opts["extractor_args"].setdefault("youtube", {})
+	# 	ydl_opts["extractor_args"]["youtube"]["player_client"] = ["android_music", "android"]
+
+
+	# 	with YoutubeDL(ydl_opts) as ydl:
+	# 		ydl.download("music.youtube.com/watch?v=" + video_id)
+	def download(self, video_id, temp_location):
+		# Build the base URL
+		url = f"https://music.youtube.com/watch?v={video_id}"
+
+		# If itag is empty / None, fall back to bestaudio/best
+		format_selector = self.itag or "bestaudio/best"
+
+		# Build the yt-dlp command
+		cmd = [
+			"yt-dlp",
+			"-f", format_selector,
+			"-o", str(temp_location),
+		]
+
+		# Add cookies if configured
 		if self.cookies_location is not None:
-			ydl_opts["cookiefile"] = str(self.cookies_location)
-		with YoutubeDL(ydl_opts) as ydl:
-			ydl.download("music.youtube.com/watch?v=" + video_id)
+			cmd.extend(["--cookies", str(self.cookies_location)])
+
+		# Finally add the URL
+		cmd.append(url)
+
+		# Debug: if things still break, print the cmd
+		# print("Running:", " ".join(cmd))
+
+		# Run yt-dlp and raise if it fails
+		subprocess.run(cmd, check=True)
 
 	def download_souncloud(self, url, temp_location):
 		# opus is obviously a better format, however:
