@@ -112,17 +112,17 @@ def cli(
 	logger.debug("Starting downloader")
 
 	dl = Dl(
-		final_path, 
-		temp_path, 
-		cookies_location, 
-		ffmpeg_location, 
-		itag, cover_size, 
-		cover_format, 
-		cover_quality, 
-		template_folder, 
-		template_file, 
-		exclude_tags, 
-		truncate, 
+		final_path,
+		temp_path,
+		cookies_location,
+		ffmpeg_location,
+		itag, cover_size,
+		cover_format,
+		cover_quality,
+		template_folder,
+		template_file,
+		exclude_tags,
+		truncate,
 		dump_json=log_level == "DEBUG",
 		use_playlist_name=use_playlist_name
 	)
@@ -171,7 +171,7 @@ def cli(
 				logger.debug("Applied cover Image")
 				final_location = dl.get_final_location(tags, ".mp3" if dl.soundcloud is True else ".m4a", is_single, single_folder)
 				logger.debug(f'Final location is "{final_location}"')
-				temp_location = dl.get_temp_location(track["id"])	
+				temp_location = dl.get_temp_location(track["id"])
 				if not final_location.exists() or overwrite:
 					logger.debug(f'Downloading to "{temp_location}"')
 					if no_download:
@@ -180,7 +180,7 @@ def cli(
 						dl.download(track["id"], temp_location)
 					else:
 						dl.download_souncloud(track.get("original_url") or track["webpage_url"], temp_location)
-					
+
 					fixed_location = dl.get_fixed_location(track["id"])
 					logger.debug(f'Remuxing to "{fixed_location}"')
 					dl.fixup(temp_location, fixed_location)
@@ -214,4 +214,3 @@ def cli(
 					logger.debug(f'Cleaning up "{temp_path}"')
 					dl.cleanup()
 	logger.info(f"Done ({error_count} error(s))")
-

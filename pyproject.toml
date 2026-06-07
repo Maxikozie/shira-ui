@@ -1,12 +1,12 @@
 [project]
 name = "shiradl"
-version = "1.8.2"
+version = "1.8.3"
 description = "Download music from YouTube, YouTube Music and Soundcloud, with great metadata and little effort."
 requires-python = ">=3.11"
 authors = [{ name = "KraXen72" }, { name = "glomatico" }]
 dependencies = [
 	"click",
-	"yt-dlp >= 2026.02.21",
+	"yt-dlp>=2026.2.21",
 	"ytmusicapi >= 1.10.2",
 	"mediafile",
 	"pillow",
