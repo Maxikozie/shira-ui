@@ -6,7 +6,6 @@ from pathlib import Path
 
 import click
 
-from . import __version__
 from .dl import Dl
 from .metadata import TIGER_SINGLE, smart_metadata
 from .musicbrainz import musicbrainz_enrich_tags
@@ -65,7 +64,8 @@ def no_config_callback(ctx: click.Context, param: click.Parameter, no_config_fil
 @click.option("--no-config-file", "-n", is_flag=True, callback=no_config_callback, help="Don't use the config file.")
 @click.option("--single-folder", "-w", is_flag=True, help="Wrap singles in their own folder instead of placing them directly into artist's folder.")
 @click.option("--use-playlist-name", type=bool, is_flag=True, help="Uses the playlist name in the final location when downloading a playlist.")
-@click.version_option(__version__)
+@click.option("--no-download", is_flag=True, help="Skip actual download; write a silent stub file for metadata-only testing.")
+@click.version_option(package_name="shiradl")
 @click.help_option("-h", "--help")
 def cli(
 	urls: tuple[str, ...],
@@ -91,7 +91,8 @@ def cli(
 	url_txt: bool,
 	no_config_file: bool,
 	single_folder: bool,
-	use_playlist_name: bool
+	use_playlist_name: bool,
+	no_download: bool,
 ):
 	logger = logging.getLogger(__name__)
 	logger.setLevel(log_level)
@@ -111,17 +112,17 @@ def cli(
 	logger.debug("Starting downloader")
 
 	dl = Dl(
-		final_path, 
-		temp_path, 
-		cookies_location, 
-		ffmpeg_location, 
-		itag, cover_size, 
-		cover_format, 
-		cover_quality, 
-		template_folder, 
-		template_file, 
-		exclude_tags, 
-		truncate, 
+		final_path,
+		temp_path,
+		cookies_location,
+		ffmpeg_location,
+		itag, cover_size,
+		cover_format,
+		cover_quality,
+		template_folder,
+		template_file,
+		exclude_tags,
+		truncate,
 		dump_json=log_level == "DEBUG",
 		use_playlist_name=use_playlist_name
 	)
@@ -170,14 +171,16 @@ def cli(
 				logger.debug("Applied cover Image")
 				final_location = dl.get_final_location(tags, ".mp3" if dl.soundcloud is True else ".m4a", is_single, single_folder)
 				logger.debug(f'Final location is "{final_location}"')
-				temp_location = dl.get_temp_location(track["id"])	
+				temp_location = dl.get_temp_location(track["id"])
 				if not final_location.exists() or overwrite:
 					logger.debug(f'Downloading to "{temp_location}"')
-					if dl.soundcloud is False:
+					if no_download:
+						dl.stub_download(temp_location)
+					elif dl.soundcloud is False:
 						dl.download(track["id"], temp_location)
 					else:
 						dl.download_souncloud(track.get("original_url") or track["webpage_url"], temp_location)
-					
+
 					fixed_location = dl.get_fixed_location(track["id"])
 					logger.debug(f'Remuxing to "{fixed_location}"')
 					dl.fixup(temp_location, fixed_location)
@@ -189,6 +192,7 @@ def cli(
 					# 	tagger_mp3(tags, fixed_location, dl.exclude_tags, dl.cover_format)
 					logger.debug("Moving to final location")
 					dl.move_to_final_location(fixed_location, final_location)
+					logger.info(f'Saved to "{final_location}"')
 				else:
 					logger.warning("File already exists at final location, skipping")
 				if save_cover:
@@ -210,4 +214,3 @@ def cli(
 					logger.debug(f'Cleaning up "{temp_path}"')
 					dl.cleanup()
 	logger.info(f"Done ({error_count} error(s))")
-

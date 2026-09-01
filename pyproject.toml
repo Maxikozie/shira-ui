@@ -1,27 +1,56 @@
 [project]
 name = "shiradl"
+version = "1.8.5"
 description = "Download music from YouTube, YouTube Music and Soundcloud, with great metadata and little effort."
-requires-python = ">=3.8"
-authors =  [{ name = "KraXen72" }, { name = "glomatico" }]
+requires-python = ">=3.11"
+authors = [{ name = "KraXen72" }, { name = "glomatico" }]
 dependencies = [
 	"click",
-	"yt-dlp >= 2025.03.27",
-	"ytmusicapi >= 1.10.2",
+	"yt-dlp==2026.6.9",
+	"ytmusicapi==1.12.1",
 	"mediafile",
 	"pillow",
 	"requests_cache",
-	"python-dateutil"
+	"python-dateutil",
 ]
 readme = "README.md"
-dynamic = ["version"]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-timeout",
+    "inline-snapshot",
+    "taskipy"
+]
+
+[project.scripts]
+shiradl = "shiradl.cli:cli"
+mbtag = "shiradl.mbtag:mbtag_cli"
 
 [project.urls]
 repository = "https://github.com/KraXen72/shira"
 
 [build-system]
-requires = ["flit_core"]
-build-backend = "flit_core.buildapi"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[project.scripts]
-shiradl = "shiradl.cli:cli"
-mbtag = "shiradl.mbtag:mbtag_cli"
+[tool.hatch.build]
+exclude = ["tests/"]
+
+[tool.pytest.ini_options]
+python_files = ["*.test.py", "test_*.py"]
+testpaths = ["tests"]
+pythonpath = ["tests"]
+addopts = "--import-mode=importlib -s"
+markers = [
+	"download: tests that perform actual file downloads",
+	"metadata: tests requiring network access",
+	"smoke: basic sanity-check tests, checking both metadata & download size"
+]
+
+[tool.taskipy.tasks]
+release = "bash ./scripts/release.sh"
+test = "pytest -v -x"
+"test:dl" = "pytest tests/download.test.py -v -x"
+"test:meta" = "pytest tests/metadata.test.py -v -x"
+"test:smoke" = "pytest tests/smoke.test.py -v -x"

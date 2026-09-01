@@ -1,10 +1,10 @@
 import json
 import re
+from importlib.metadata import version as _pkg_version
 from typing import TypedDict
 
 from requests_cache import CachedSession
 
-from .__init__ import __version__ as shiraver
 from .metadata import clean_title, parse_datestring
 from .tagging import Tags
 
@@ -158,8 +158,8 @@ class MBSong:
 		self.album = album
 		self.base = "https://musicbrainz.org/ws/2"
 		self.default_params = { "fmt": "json" }
-		self.req = CachedSession("shira", expire_after=cache_lifetime_seconds)
-		self.head = { "User-Agent": f"shiradl+mbtag/{shiraver} ( https://github.com/KraXen72/shira )" }
+		self.req = CachedSession("shira_requests_cache", expire_after=cache_lifetime_seconds, use_cache_dir=True)
+		self.head = { "User-Agent": f"shiradl/{_pkg_version('shiradl')} ( https://github.com/KraXen72/shira )" }
 
 		self.song_dict = None # MBRecording
 		self.artist_dict = None # MBArtistCredit
@@ -183,7 +183,7 @@ class MBSong:
 		if self.debug:
 			print(res.url, res.status_code)
 			print("fetch_song query:", params["query"])
-		if res.status_code >= 200 and res.status_code < 300:
+		if res.status_code and res.status_code >= 200 and res.status_code < 300:
 			resjson = json.loads(res.text)
 			self.save_song_dict(resjson["recordings"])
 		else:
@@ -199,7 +199,7 @@ class MBSong:
 		if self.debug:
 			print(res.url)
 			print("fetch_artist query:", params["query"])
-		if res.status_code >= 200 and res.status_code < 300:
+		if res.status_code and res.status_code >= 200 and res.status_code < 300:
 			resjson = json.loads(res.text)
 			self.save_artist_dict(resjson["artists"])
 
@@ -323,7 +323,11 @@ def musicbrainz_enrich_tags(tags: Tags, skip_encode = False, exclude_tags: list[
 	"""takes in a tags dict, adds mbid tags and (by default) also other mb info, returns it"""
 
 	mb = MBSong(title=tags["title"], artist=str(tags["artist"]), album=tags["album"])
-	mb.fetch_song()
+	try:
+		mb.fetch_song()
+	except:
+		print("coundn't fetch tags from musicbrainz, skipping...")
+		return tags
 
 	if use_mbid_data:
 		if mb.artist_dict:

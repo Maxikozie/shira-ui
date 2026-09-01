@@ -1,9 +1,16 @@
 __pycache__
+.pytest_cache
+.venv
 *.json
 *.opus
 *.mp3
+*.m4a
 *.wav
 *.flac
 *.sqlite
+!test_config.json
+!renovate.json
+repomix-output*
+tests/downloads
 test.py
 cookies.txt
