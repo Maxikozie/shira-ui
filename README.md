@@ -25,7 +25,7 @@ macOS or Linux.
 | | Why |
 |---|---|
 | **Python 3.12 or newer** | Runs the app. See the note below about 3.11. |
-| **FFmpeg** (including **ffprobe**) | Shira converts and tags every file with it. Downloads cannot work without it. `ffprobe` ships alongside `ffmpeg`; both are needed. |
+| **FFmpeg** (including **ffprobe**) | Shira converts and tags every file with it. Downloads cannot work without it. `ffprobe` ships alongside `ffmpeg`; both are needed. If you skip this, the app offers a **Get FFmpeg** button that downloads it for you. |
 | **Git** | To download the code. |
 
 > **Use Python 3.12+, not 3.11.** `shiradl`'s own `pyproject.toml` says `>=3.11`,
@@ -206,9 +206,10 @@ folder, run:
 
 **A red banner says FFmpeg wasn't found**
 
-FFmpeg is not installed, or not on your `PATH`. Install it
-(`winget install Gyan.FFmpeg`), reopen your terminal, and press **Recheck**.
-You can also press **Locate** in the banner and point at `ffmpeg.exe` yourself.
+Press **Get FFmpeg** in the banner and Shira downloads it for you (about
+111 MB) into its own folder — no terminal needed. If you already have
+`ffmpeg.exe` somewhere, press **Locate** and point at it instead. Installing it
+yourself with `winget install Gyan.FFmpeg` and pressing **Recheck** also works.
 
 **A red banner says FFprobe wasn't found**
 
@@ -269,15 +270,16 @@ py -3.14 -m venv .venv-build
 The result is `dist\Shira UI\Shira UI.exe`, about 116 MB unpacked. Ship the
 whole `Shira UI` folder, not just the .exe.
 
-**FFmpeg is deliberately not bundled.** This project is MIT licensed, and
-shipping a GPL FFmpeg build alongside it would put the whole distribution
-under the GPL. The app detects a missing FFmpeg at startup and shows a banner
-with a Locate button, so it fails with a clear instruction rather than
-silently. Anyone running the .exe still needs:
+**FFmpeg is not bundled — the app fetches it instead.** On first run, if
+FFmpeg is missing, the banner offers a **Get FFmpeg** button that downloads it
+(about 111 MB) into the app's own folder and verifies it runs. So someone using
+the .exe never has to open a terminal.
 
-```powershell
-winget install Gyan.FFmpeg
-```
+It is downloaded rather than shipped so that this project redistributes
+nothing: the user triggers the download themselves, which sidesteps FFmpeg's
+GPL redistribution obligations entirely. **Locate** remains available for
+anyone who already has `ffmpeg.exe`, and `winget install Gyan.FFmpeg` still
+works if they prefer.
 
 <details>
 <summary>How the packaged app runs downloads</summary>

@@ -86,13 +86,21 @@ def check(ffmpeg_location: str = "ffmpeg") -> PreflightResult:
 
 	ffmpeg = shutil.which(str(ffmpeg_location))
 	if not ffmpeg:
+		# Fall back to a copy this app downloaded earlier, so a cleared
+		# settings file does not orphan it.
+		from .ffmpeg_setup import managed_ffmpeg
+
+		managed = managed_ffmpeg()
+		if managed is not None:
+			ffmpeg = str(managed)
+	if not ffmpeg:
 		return PreflightResult(
 			ok=False,
 			headline="FFmpeg wasn't found",
 			remedy=(
 				"FFmpeg is the helper program Shira uses to finish each file. "
-				"Install it with  winget install Gyan.FFmpeg  then click Recheck, "
-				"or use Locate to point at ffmpeg.exe yourself."
+				"Press Get FFmpeg and Shira will download it for you, or use "
+				"Locate if you already have ffmpeg.exe somewhere."
 			),
 		)
 	r.ffmpeg = ffmpeg
