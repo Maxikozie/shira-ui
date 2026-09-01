@@ -49,6 +49,11 @@ launcher. Run the interface's tests with:
 python -m pytest tests_ui
 ```
 
+If you ever merge a newer `shiradl` from upstream, run those tests first — they
+check the interface against the version you actually have installed and will
+tell you exactly what to reconcile if upstream renamed a flag or reworded a
+log message.
+
 ### Troubleshooting
 
 If you experience issues such as downloads failing or no formats being available, try the following:

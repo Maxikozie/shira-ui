@@ -18,6 +18,33 @@ git fetch upstream && git merge upstream/master
 
 Only `.gitignore` and `README.md` conflict (both are fork-owned; keep our side and re-apply upstream's new ignore entries). Currently synced to upstream **v1.8.5**.
 
+**After every sync, run the contract tests first:**
+
+```bash
+pip install -e . && python -m pytest tests_ui
+```
+
+`tests_ui/test_upstream_contract.py` introspects the *installed* shiradl and
+guards the two places this fork couples to it. Both fail quietly when upstream
+drifts, which is why they are tested rather than trusted:
+
+- **`shiraui/argsbuilder.py` emits flag strings.** If upstream renames or drops
+  an option, Click rejects the argv and every download fails with a usage
+  error. The test checks every emitted flag against `cli.params`, that booleans
+  are still booleans, that `--cover-format`/`--cover-crop` values are still
+  valid `Choice`s, and that the `IntRange` bounds still match the spin boxes.
+- **`shiraui/logparse.py` matches exact log text.** If upstream rewords a
+  message, the progress bar and completion summary stop working while downloads
+  carry on fine — it looks like the app hung. The test asserts the message
+  shapes still exist in `cli.py`, and round-trips a record through shiradl's own
+  `logging` format into the parser.
+
+It also re-checks the safety assumption behind `shiraui/paths.py` — that
+`--temp-path` is still `shutil.rmtree`'d — so if upstream ever stops doing that,
+the reason for the app-owned work directory gets revisited deliberately.
+
+A failure names the file to reconcile. Fix `shiraui/`, never `shiradl/`.
+
 ## Commands
 
 `shiradl` must be **installed**, not just checked out — see "The install requirement" below.
