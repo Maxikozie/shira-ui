@@ -268,7 +268,24 @@ py -3.14 -m venv .venv-build
 ```
 
 The result is `dist\Shira UI\Shira UI.exe`, about 116 MB unpacked. Ship the
-whole `Shira UI` folder, not just the .exe.
+whole `Shira UI` folder, not just the .exe — the `_internal` folder beside it
+is required.
+
+The window and taskbar icon comes from `logo.ico`. Regenerate it after editing
+`logo.svg`:
+
+```powershell
+python tools\make_icon.py
+```
+
+To produce a release archive (about 53 MB zipped):
+
+```powershell
+Compress-Archive -Path "dist\Shira UI" -DestinationPath "dist\Shira-UI-windows-x64.zip"
+```
+
+Note the .exe is unsigned, so Windows SmartScreen warns on first run —
+"More info" then "Run anyway". Code signing requires a purchased certificate.
 
 **FFmpeg is not bundled — the app fetches it instead.** On first run, if
 FFmpeg is missing, the banner offers a **Get FFmpeg** button that downloads it
