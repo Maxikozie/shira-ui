@@ -245,6 +245,64 @@ patterns — it shows exactly where files will land. The **Open** button next to
 
 ---
 
+## Building a standalone .exe (Windows)
+
+Produces a folder you can zip and hand to someone who has no Python at all.
+They still need FFmpeg — see the note below.
+
+Build with a **non-conda** Python. A conda interpreter links `_ctypes` against
+a `libffi` that PyInstaller does not collect, and the resulting build fails at
+startup with `DLL load failed while importing _ctypes`.
+
+```powershell
+py -3.14 -m venv .venv-build
+```
+
+```powershell
+.venv-build\Scripts\python.exe -m pip install -e . PyQt6 pyinstaller
+```
+
+```powershell
+.venv-build\Scripts\python.exe -m PyInstaller shira-ui.spec --noconfirm --clean
+```
+
+The result is `dist\Shira UI\Shira UI.exe`, about 116 MB unpacked. Ship the
+whole `Shira UI` folder, not just the .exe.
+
+**FFmpeg is deliberately not bundled.** This project is MIT licensed, and
+shipping a GPL FFmpeg build alongside it would put the whole distribution
+under the GPL. The app detects a missing FFmpeg at startup and shows a banner
+with a Locate button, so it fails with a clear instruction rather than
+silently. Anyone running the .exe still needs:
+
+```powershell
+winget install Gyan.FFmpeg
+```
+
+<details>
+<summary>How the packaged app runs downloads</summary>
+
+Normally the app spawns `pythonw.exe -m shiradl` for each link. In a frozen
+build there is no interpreter to spawn — `sys.executable` is the .exe itself,
+so `-m shiradl` would just relaunch the GUI.
+
+Instead the executable re-runs *itself* with `--shiradl-child`, which
+`shira_ui.py` detects before Qt is imported and routes into `shiradl.cli`.
+That also makes the packaged app usable as a CLI:
+
+```powershell
+"dist\Shira UI\Shira UI.exe" --shiradl-child --version
+```
+
+`shira-ui.spec` bundles shiradl's `.dist-info`, because shiradl reads its own
+version through `importlib.metadata`; without it every track fails. It also
+bundles `ytmusicapi`'s locale files, which it loads via `gettext` while
+constructing `YTMusic()` — missing them kills the run before any track starts.
+
+</details>
+
+---
+
 ## For developers
 
 The interface lives in the `shiraui/` package; `shira_ui.py` is a small
