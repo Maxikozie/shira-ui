@@ -87,7 +87,8 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon="logo.svg" if False else None,  # .ico only; SVG is used for the window icon
+    # Windows requires .ico. Regenerate from logo.svg with tools/make_icon.py.
+    icon="logo.ico",
 )
 
 # One-folder rather than one-file. onefile re-extracts ~200 MB to a temp
