@@ -14,3 +14,7 @@ repomix-output*
 tests/downloads
 test.py
 cookies.txt
+.venv-build
+build/
+dist/
+*.spec.bak

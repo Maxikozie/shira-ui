@@ -19,7 +19,7 @@ from PyQt6.QtCore import QObject, QProcess, QProcessEnvironment, QTimer, pyqtSig
 
 from .argsbuilder import build_args
 from .logparse import Kind, LogParser, ProgressTracker
-from .preflight import resolve_python
+from .preflight import child_command
 
 _KILL_GRACE_MS = 3000
 
@@ -120,7 +120,8 @@ class DownloadRunner(QObject):
 		proc.errorOccurred.connect(self._on_error)
 
 		self._proc = proc
-		proc.start(resolve_python(), ["-u", "-m", "shiradl", *build_args(self._spec, url)])
+		program, *prefix = child_command()
+		proc.start(program, [*prefix, *build_args(self._spec, url)])
 
 	# -- output ------------------------------------------------------------
 

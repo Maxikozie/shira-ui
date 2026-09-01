@@ -26,20 +26,42 @@ class PreflightResult:
 	ffprobe: str | None = None
 
 
-def resolve_python() -> str:
-	"""Interpreter for the child process.
+#: argv[1] that makes the frozen executable behave as the shiradl CLI instead
+#: of launching the GUI. See child_command().
+CHILD_FLAG = "--shiradl-child"
 
-	Prefer pythonw.exe on Windows: python.exe flashes a console window on
-	every launch. PyQt6 does not expose setCreateProcessArgumentsModifier, so
-	CREATE_NO_WINDOW is unavailable -- but pythonw was verified to deliver
-	both stdout and stderr correctly through QProcess pipes.
+
+def is_frozen() -> bool:
+	return getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS")
+
+
+def child_command() -> list[str]:
+	"""Command prefix for spawning shiradl, minus its own arguments.
+
+	Two very different cases:
+
+	* **Running from source** -- spawn the interpreter with ``-m shiradl``.
+	  Prefer ``pythonw.exe`` on Windows, because ``python.exe`` flashes a
+	  console window on every launch and PyQt6 does not expose
+	  ``setCreateProcessArgumentsModifier``, so CREATE_NO_WINDOW is not
+	  available. pythonw was verified to deliver stdout and stderr correctly
+	  through QProcess pipes.
+
+	* **Frozen (PyInstaller)** -- there is no interpreter to call. Here
+	  ``sys.executable`` is the .exe itself, so ``-m shiradl`` would simply
+	  relaunch the GUI. Instead the executable re-runs *itself* with
+	  CHILD_FLAG, which the entry point detects before any Qt import and
+	  routes into ``shiradl.cli``.
 	"""
+	if is_frozen():
+		return [sys.executable, CHILD_FLAG]
+
 	exe = Path(sys.executable)
 	if os.name == "nt" and exe.name.lower() == "python.exe":
 		wexe = exe.with_name("pythonw.exe")
 		if wexe.exists():
-			return str(wexe)
-	return str(exe)
+			exe = wexe
+	return [str(exe), "-u", "-m", "shiradl"]
 
 
 def check(ffmpeg_location: str = "ffmpeg") -> PreflightResult:
@@ -64,13 +86,21 @@ def check(ffmpeg_location: str = "ffmpeg") -> PreflightResult:
 
 	ffmpeg = shutil.which(str(ffmpeg_location))
 	if not ffmpeg:
+		# Fall back to a copy this app downloaded earlier, so a cleared
+		# settings file does not orphan it.
+		from .ffmpeg_setup import managed_ffmpeg
+
+		managed = managed_ffmpeg()
+		if managed is not None:
+			ffmpeg = str(managed)
+	if not ffmpeg:
 		return PreflightResult(
 			ok=False,
 			headline="FFmpeg wasn't found",
 			remedy=(
 				"FFmpeg is the helper program Shira uses to finish each file. "
-				"Install it with  winget install Gyan.FFmpeg  then click Recheck, "
-				"or use Locate to point at ffmpeg.exe yourself."
+				"Press Get FFmpeg and Shira will download it for you, or use "
+				"Locate if you already have ffmpeg.exe somewhere."
 			),
 		)
 	r.ffmpeg = ffmpeg

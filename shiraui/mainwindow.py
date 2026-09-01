@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
 	QMainWindow,
 	QMenu,
 	QMessageBox,
+	QProgressBar,
 	QPushButton,
 	QSlider,
 	QSpinBox,
@@ -27,7 +28,7 @@ from PyQt6.QtWidgets import (
 	QWidget,
 )
 
-from . import paths, preflight
+from . import ffmpeg_setup, paths, preflight
 from .argsbuilder import preview_command
 from .icons import GLYPH
 from .jobspec import COVER_CROPS, COVER_FORMATS, QUALITY_PRESETS, JobSpec
@@ -80,6 +81,7 @@ class MainWindow(QMainWindow):
 		self._preflight = preflight.PreflightResult()
 		self._run_dir: Path | None = None
 		self._finished = False
+		self._installer = None
 
 		self.setWindowTitle("Shira")
 		logo = paths.logo_path()
@@ -465,14 +467,25 @@ class MainWindow(QMainWindow):
 		self.banner_title.setStyleSheet("font-weight: 600;")
 		self.banner_body = QLabel("")
 		self.banner_body.setWordWrap(True)
+		# Downloading FFmpeg on request means this project redistributes
+		# nothing, and the user never has to open a terminal.
+		self.banner_get = QPushButton("Get FFmpeg")
+		self.banner_get.setObjectName("PrimaryButton")
+		self.banner_get.setFixedWidth(140)
+		self.banner_get.setVisible(False)
 		self.banner_fix = QPushButton("Locate ffmpeg…")
 		self.banner_fix.setFixedWidth(140)
 		self.banner_recheck = QPushButton("Recheck")
 		self.banner_recheck.setFixedWidth(96)
 
+		self.banner_bar = QProgressBar()
+		self.banner_bar.setTextVisible(False)
+		self.banner_bar.setVisible(False)
+
 		btns = QHBoxLayout()
 		btns.setContentsMargins(0, 0, 0, 0)
 		btns.addStretch(1)
+		btns.addWidget(self.banner_get)
 		btns.addWidget(self.banner_fix)
 		btns.addWidget(self.banner_recheck)
 
@@ -481,6 +494,7 @@ class MainWindow(QMainWindow):
 		lay.setSpacing(6)
 		lay.addWidget(self.banner_title)
 		lay.addWidget(self.banner_body)
+		lay.addWidget(self.banner_bar)
 		lay.addLayout(btns)
 		return frame
 
@@ -552,6 +566,7 @@ class MainWindow(QMainWindow):
 
 		self.banner_recheck.clicked.connect(self.run_preflight)
 		self.banner_fix.clicked.connect(self.pick_ffmpeg)
+		self.banner_get.clicked.connect(self.get_ffmpeg)
 
 		self.advanced.toggled.connect(lambda on: self._grow_for(self.advanced, on))
 		self.log_section.toggled.connect(lambda on: self._grow_for(self.log_section, on))
@@ -585,10 +600,62 @@ class MainWindow(QMainWindow):
 			self.banner_body.setText(self._preflight.remedy)
 			self.ffmpeg_state.setText("not found")
 			self.download_btn.setToolTip(self._preflight.headline)
+			# Only offer the download for the case it actually solves, and
+			# only where a single-archive install is sensible.
+			self.banner_get.setVisible(
+				ffmpeg_setup.supported()
+				and "FFmpeg" in self._preflight.headline
+			)
 		else:
 			self.ffmpeg_state.setText("found")
 			self.download_btn.setToolTip("")
+			self.banner_get.setVisible(False)
+			if self._preflight.ffmpeg and not self.ffmpeg.text().strip():
+				self.ffmpeg.setText(self._preflight.ffmpeg)
 		self._refresh_download_enabled()
+
+	def get_ffmpeg(self) -> None:
+		if getattr(self, "_installer", None) is not None:
+			return
+		self.banner_get.setEnabled(False)
+		self.banner_fix.setEnabled(False)
+		self.banner_recheck.setEnabled(False)
+		self.banner_bar.setVisible(True)
+		self.banner_bar.setRange(0, 0)
+
+		self._installer = ffmpeg_setup.FFmpegInstaller(self)
+		self._installer.progress.connect(self._on_ffmpeg_progress)
+		self._installer.done.connect(self._on_ffmpeg_done)
+		self._installer.start()
+
+	def _on_ffmpeg_progress(self, pct: int, message: str) -> None:
+		if pct < 0:
+			self.banner_bar.setRange(0, 0)
+		else:
+			self.banner_bar.setRange(0, 100)
+			self.banner_bar.setValue(pct)
+		self.banner_body.setText(message)
+
+	def _on_ffmpeg_done(self, ok: bool, detail: str) -> None:
+		self._installer = None
+		self.banner_bar.setVisible(False)
+		for b in (self.banner_get, self.banner_fix, self.banner_recheck):
+			b.setEnabled(True)
+
+		if ok:
+			# Point at the copy we just unpacked and persist it, so this is a
+			# one-time step even across restarts.
+			self.ffmpeg.setText(detail)
+			self.settings.set("adv/ffmpeg", detail)
+			self.run_preflight()
+			if self._preflight.ok:
+				self.status.message.setText("FFmpeg installed — ready to download")
+		else:
+			self.banner_title.setText("Couldn't download FFmpeg")
+			self.banner_body.setText(
+				f"{detail}\n\nYou can still press Locate if you have ffmpeg.exe "
+				f"already, or install it yourself from ffmpeg.org."
+			)
 
 	# ------------------------------------------------------------- actions
 

@@ -25,7 +25,7 @@ macOS or Linux.
 | | Why |
 |---|---|
 | **Python 3.12 or newer** | Runs the app. See the note below about 3.11. |
-| **FFmpeg** (including **ffprobe**) | Shira converts and tags every file with it. Downloads cannot work without it. `ffprobe` ships alongside `ffmpeg`; both are needed. |
+| **FFmpeg** (including **ffprobe**) | Shira converts and tags every file with it. Downloads cannot work without it. `ffprobe` ships alongside `ffmpeg`; both are needed. If you skip this, the app offers a **Get FFmpeg** button that downloads it for you. |
 | **Git** | To download the code. |
 
 > **Use Python 3.12+, not 3.11.** `shiradl`'s own `pyproject.toml` says `>=3.11`,
@@ -206,9 +206,10 @@ folder, run:
 
 **A red banner says FFmpeg wasn't found**
 
-FFmpeg is not installed, or not on your `PATH`. Install it
-(`winget install Gyan.FFmpeg`), reopen your terminal, and press **Recheck**.
-You can also press **Locate** in the banner and point at `ffmpeg.exe` yourself.
+Press **Get FFmpeg** in the banner and Shira downloads it for you (about
+111 MB) into its own folder — no terminal needed. If you already have
+`ffmpeg.exe` somewhere, press **Locate** and point at it instead. Installing it
+yourself with `winget install Gyan.FFmpeg` and pressing **Recheck** also works.
 
 **A red banner says FFprobe wasn't found**
 
@@ -242,6 +243,71 @@ py -3.13 -m venv .venv
 Open *Advanced options* and check the **Preview** line under the naming
 patterns — it shows exactly where files will land. The **Open** button next to
 *Save music to* opens the destination.
+
+---
+
+## Building a standalone .exe (Windows)
+
+Produces a folder you can zip and hand to someone who has no Python at all.
+They still need FFmpeg — see the note below.
+
+Build with a **non-conda** Python. A conda interpreter links `_ctypes` against
+a `libffi` that PyInstaller does not collect, and the resulting build fails at
+startup with `DLL load failed while importing _ctypes`.
+
+```powershell
+py -3.14 -m venv .venv-build
+```
+
+```powershell
+.venv-build\Scripts\python.exe -m pip install -e . PyQt6 pyinstaller
+```
+
+```powershell
+.venv-build\Scripts\python.exe -m PyInstaller shira-ui.spec --noconfirm --clean
+```
+
+The result is `dist\Shira UI\Shira UI.exe`, about 116 MB unpacked. Ship the
+whole `Shira UI` folder, not just the .exe.
+
+**FFmpeg is not bundled — the app fetches it instead.** On first run, if
+FFmpeg is missing, the banner offers a **Get FFmpeg** button that downloads it
+(about 111 MB) into the app's own folder and verifies it runs. So someone using
+the .exe never has to open a terminal.
+
+It is downloaded rather than shipped so that this project redistributes
+nothing: the user triggers the download themselves, which sidesteps FFmpeg's
+GPL redistribution obligations entirely. **Locate** remains available for
+anyone who already has `ffmpeg.exe`, and `winget install Gyan.FFmpeg` still
+works if they prefer.
+
+The download is pinned to a specific FFmpeg build and checked against a
+SHA-256 hash before anything is unpacked; a mismatch is discarded and nothing
+is installed. To move to a newer FFmpeg, update `SOURCE_URL` and
+`EXPECTED_SHA256` in `shiraui/ffmpeg_setup.py` — the publisher serves the hash
+at `<url>.sha256`.
+
+<details>
+<summary>How the packaged app runs downloads</summary>
+
+Normally the app spawns `pythonw.exe -m shiradl` for each link. In a frozen
+build there is no interpreter to spawn — `sys.executable` is the .exe itself,
+so `-m shiradl` would just relaunch the GUI.
+
+Instead the executable re-runs *itself* with `--shiradl-child`, which
+`shira_ui.py` detects before Qt is imported and routes into `shiradl.cli`.
+That also makes the packaged app usable as a CLI:
+
+```powershell
+"dist\Shira UI\Shira UI.exe" --shiradl-child --version
+```
+
+`shira-ui.spec` bundles shiradl's `.dist-info`, because shiradl reads its own
+version through `importlib.metadata`; without it every track fails. It also
+bundles `ytmusicapi`'s locale files, which it loads via `gettext` while
+constructing `YTMusic()` — missing them kills the run before any track starts.
+
+</details>
 
 ---
 
