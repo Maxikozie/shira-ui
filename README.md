@@ -1,6 +1,8 @@
 # Shira UI
 
-A lightweight PyQt6 interface for [shira](https://github.com/KraXen72/shira) — smart music downloader.
+A desktop interface for [shira](https://github.com/KraXen72/shira) — smart music downloader for YouTube, YouTube Music and SoundCloud.
+
+Paste some links, pick a folder, press Download. No command line needed.
 
 ### Features
 - Supports YouTube, YouTube Music, and SoundCloud
@@ -10,65 +12,248 @@ A lightweight PyQt6 interface for [shira](https://github.com/KraXen72/shira) —
 - Plain-language advanced options, collapsed by default
 - Your settings are remembered and are always what actually runs
 
-### Requirements
-- Python 3.11+ (upstream `shiradl` now sets `requires-python = ">=3.11"`)
-- PyQt6
-- `shiradl` **installed as a package**, not just present in the folder
+---
 
-### Setup
+## Installing from scratch
 
-`shiradl` must be installed, not merely checked out. Since v1.8.x it reads its own
-version through `importlib.metadata`, which only works for an installed
-distribution — running against a bare source tree raises `PackageNotFoundError`
-on every track.
+This assumes a machine with **nothing** installed yet. It takes about five
+minutes. Every command goes in a terminal — PowerShell on Windows, Terminal on
+macOS or Linux.
 
-```bash
-pip install -e .
+### What you need, and why
+
+| | Why |
+|---|---|
+| **Python 3.12 or newer** | Runs the app. See the note below about 3.11. |
+| **FFmpeg** (including **ffprobe**) | Shira converts and tags every file with it. Downloads cannot work without it. `ffprobe` ships alongside `ffmpeg`; both are needed. |
+| **Git** | To download the code. |
+
+> **Use Python 3.12+, not 3.11.** `shiradl`'s own `pyproject.toml` says `>=3.11`,
+> but that is wrong: `shiradl/mbtag.py` uses f-string syntax introduced in 3.12.
+> On 3.11 the app installs and downloads fine, but the separate `mbtag`
+> re-tagging tool fails with a `SyntaxError`. 3.12+ avoids the whole question.
+
+### Step 1 — install the prerequisites
+
+**Windows**
+
+```powershell
+winget install Python.Python.3.13 Gyan.FFmpeg Git.Git
 ```
 
+**Close and reopen your terminal afterwards**, so the new programs are picked up.
+
+<details>
+<summary>macOS / Linux</summary>
+
+macOS, with [Homebrew](https://brew.sh):
+
 ```bash
-pip install PyQt6
+brew install python@3.13 ffmpeg git
 ```
 
-Icons are optional. Install `qtawesome` for them; without it the app falls
-back to built-in icons and Unicode glyphs and looks correct either way.
+Debian / Ubuntu:
 
 ```bash
-pip install qtawesome
+sudo apt install python3 python3-venv ffmpeg git
 ```
 
-### Run
-```bash
-python shira_ui.py
+</details>
+
+Check they are all available before continuing. Each should print a version:
+
+```powershell
+python --version; ffmpeg -version; ffprobe -version; git --version
 ```
+
+If any says "not recognized", it did not install or your terminal still has the
+old `PATH` — reopen the terminal and try again.
+
+### Step 2 — download Shira UI
+
+```powershell
+git clone https://github.com/Maxikozie/shira-ui.git
+```
+
+```powershell
+cd shira-ui
+```
+
+### Step 3 — create a private environment for it
+
+This keeps Shira's dependencies out of your system Python. It creates a `.venv`
+folder inside the project.
+
+```powershell
+py -3.13 -m venv .venv
+```
+
+On macOS or Linux use `python3 -m venv .venv`.
+
+### Step 4 — install everything
+
+```powershell
+.venv\Scripts\python.exe -m pip install -e . PyQt6
+```
+
+On macOS or Linux: `.venv/bin/python -m pip install -e . PyQt6`
+
+That one command installs **everything**: `shiradl` itself plus `yt-dlp`,
+`ytmusicapi`, `mediafile`, `pillow`, `requests-cache`, `click`, and the PyQt6
+interface toolkit. You do not install `shiradl` separately — `-e .` installs the
+copy inside the folder you just cloned.
+
+> **The `-e` is required, not a preference.** Since v1.8.x, `shiradl` looks up
+> its own version through `importlib.metadata`, which only works for a properly
+> installed package. Without it, every single track fails with a confusing
+> error rather than one clear message at startup.
+
+Optional — nicer button icons. The app looks correct without it:
+
+```powershell
+.venv\Scripts\python.exe -m pip install qtawesome
+```
+
+### Step 5 — run it
+
+```powershell
+.venv\Scripts\python.exe shira_ui.py
+```
+
+On macOS or Linux: `.venv/bin/python shira_ui.py`
+
+If the window opens and the status card says **Ready**, you are done. If
+something is missing, a banner at the top of the window will say what and how
+to fix it.
+
+### Check the install worked
+
+```powershell
+.venv\Scripts\python.exe -m shiradl --version
+```
+
+Should print `python -m shiradl, version 1.8.5` or newer. If it prints a
+`PackageNotFoundError` instead, Step 4 did not complete — re-run it.
+
+### Making it easier to launch
+
+Rather than typing the command each time, create a shortcut with this as its
+target (adjust the path to where you cloned it):
+
+```
+C:\path\to\shira-ui\.venv\Scripts\pythonw.exe C:\path\to\shira-ui\shira_ui.py
+```
+
+`pythonw.exe` rather than `python.exe` opens the app without a console window
+behind it.
+
+---
+
+## Updating
+
+Get the newest Shira UI:
+
+```powershell
+git pull
+```
+
+```powershell
+.venv\Scripts\python.exe -m pip install -e . PyQt6
+```
+
+Re-running the install is what picks up any new or updated dependencies.
+
+<details>
+<summary>Pulling in a newer upstream shiradl</summary>
+
+This fork shares git history with upstream, so syncing is a real merge:
+
+```bash
+git remote add upstream https://github.com/KraXen72/shira.git
+git fetch upstream && git merge upstream/master
+```
+
+Then reinstall and run the tests **first**:
+
+```bash
+pip install -e . && python -m pytest tests_ui
+```
+
+Those tests check the interface against the `shiradl` you actually have
+installed. If upstream renamed a command-line flag or reworded a log message,
+they fail and name exactly what to reconcile — both of which otherwise break
+quietly, the second one while downloads appear to keep working.
+
+</details>
+
+---
+
+## Troubleshooting
+
+**The window doesn't open, or `ModuleNotFoundError: No module named 'PyQt6'`**
+
+The install in Step 4 did not finish, or you are running the wrong Python. Use
+the one inside `.venv`, not a bare `python`.
+
+**`PackageNotFoundError: No package metadata was found for shiradl`**
+
+You are running against an uninstalled copy of the source. From the project
+folder, run:
+
+```powershell
+.venv\Scripts\python.exe -m pip install -e .
+```
+
+**A red banner says FFmpeg wasn't found**
+
+FFmpeg is not installed, or not on your `PATH`. Install it
+(`winget install Gyan.FFmpeg`), reopen your terminal, and press **Recheck**.
+You can also press **Locate** in the banner and point at `ffmpeg.exe` yourself.
+
+**A red banner says FFprobe wasn't found**
+
+`ffprobe` normally ships with `ffmpeg`. Reinstall FFmpeg so both sit in the
+same folder — Shira looks for `ffprobe` next to `ffmpeg` automatically.
+
+**Downloads fail, or "no formats available"**
+
+YouTube changes frequently and `yt-dlp` needs to keep up:
+
+```powershell
+.venv\Scripts\python.exe -m pip install -U yt-dlp
+```
+
+For private, members-only or age-restricted tracks, export a `cookies.txt` from
+your browser and switch on **Use my cookies.txt** under *Advanced options →
+When things go wrong*.
+
+**A `SyntaxError` mentioning `mbtag.py`**
+
+You are on Python 3.11. Re-create the environment with 3.12 or newer:
+
+```powershell
+rmdir /s /q .venv
+py -3.13 -m venv .venv
+.venv\Scripts\python.exe -m pip install -e . PyQt6
+```
+
+**Everything downloads but nothing appears in my folder**
+
+Open *Advanced options* and check the **Preview** line under the naming
+patterns — it shows exactly where files will land. The **Open** button next to
+*Save music to* opens the destination.
+
+---
+
+## For developers
 
 The interface lives in the `shiraui/` package; `shira_ui.py` is a small
-launcher. Run the interface's tests with:
+launcher shim. `shiradl/` is vendored upstream code, kept byte-identical so
+merges stay clean — fixes belong in `shiraui/`.
 
 ```bash
 python -m pytest tests_ui
 ```
 
-If you ever merge a newer `shiradl` from upstream, run those tests first — they
-check the interface against the version you actually have installed and will
-tell you exactly what to reconcile if upstream renamed a flag or reworded a
-log message.
-
-### Troubleshooting
-
-If you experience issues such as downloads failing or no formats being available, try the following:
-- **Update `yt-dlp`**:  
-
-  ```bash
-  yt-dlp -U
-  ```
-  If installed via pip:  
-  ```bash
-  pip install -U yt-dlp
-  ```
-- **Update `ffmpeg`**:  
-
-  Make sure `ffmpeg` is installed and the latest version is available in your system PATH. You can download the latest from [https://ffmpeg.org/download.html](https://ffmpeg.org/download.html).
-- **`PackageNotFoundError: No package metadata was found for shiradl`**:  
-
-  You are running against an uninstalled source tree. Run `pip install -e .` from the repo root.
+`tests_ui/` is the interface's own suite; `tests/` belongs to upstream.
+See [CLAUDE.md](CLAUDE.md) for architecture notes.
