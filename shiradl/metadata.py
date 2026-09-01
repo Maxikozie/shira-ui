@@ -9,7 +9,7 @@ from requests_cache import CachedSession
 from .tagging import Tags, get_1x1_cover
 
 TIGER_SINGLE = "tiger:is_single:true"
-req = CachedSession("shira", expire_after=60)
+req = CachedSession("shira_requests_cache", expire_after=60, use_cache_dir=True)
 
 def parse_datestring(datestr: str):
 	"""parse YYYYMMDD or YYYY-MM-DD into { year: str, month: str, day: str }"""
@@ -202,7 +202,7 @@ def smart_metadata(info, temp_location: Path, cover_format = "JPEG", cover_crop_
 
 	return md
 
-bracket_tuples =[["[", "]"], ["(", ")"], ["【", "】"], ["「", "」"], ["（", "）"]]
+bracket_tuples =[["[", "]"], ["【", "】"], ["「", "」"], ["（", "）"]]
 title_banned_chars = ["♪"]
 
 # https://stackoverflow.com/a/49986645/13342359

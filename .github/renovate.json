@@ -1,0 +1,20 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "packageRules": [
+    {
+      "matchPackageNames": ["python"],
+      "enabled": false
+    },
+    {
+      "matchPackageNames": ["*"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    },
+    {
+      "matchPackageNames": ["yt-dlp"],
+      "matchUpdateTypes": ["major", "minor", "patch"],
+      "enabled": true
+    }
+  ]
+}

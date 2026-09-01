@@ -17,7 +17,7 @@ AVG_THRESHOLD = 10
 CHANNEL_THRESHOLD = 15
 MV_SEPARATOR = "/"#" & " # TODO make this configurable
 MV_SEPARATOR_VISUAL = " & "
-req = CachedSession("shira", expire_after=3600)
+req = CachedSession("shira_requests_cache", expire_after=3600, use_cache_dir=True)
 
 class Tags(TypedDict):
 	title: str
@@ -119,7 +119,7 @@ def determine_image_crop(image_bytes: bytes):
 	from each sample point is lower than a than a threshold, otherwise returns 'pad'
 	"""
 	pil_img = Image.open(BytesIO(image_bytes))
-	filt_image = pil_img.filter(ImageFilter.SMOOTH).convert("P", palette=Image.ADAPTIVE, colors=64)
+	filt_image = pil_img.filter(ImageFilter.SMOOTH).convert("P", palette=Image.Palette.ADAPTIVE, colors=64)
 	rgb_filt_image = filt_image.convert("RGB")
 	
 	width, height = rgb_filt_image.size
