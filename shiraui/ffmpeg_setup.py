@@ -11,6 +11,7 @@ must land in the same directory for the runner's PATH injection to work.
 
 from __future__ import annotations
 
+import hashlib
 import os
 import shutil
 import subprocess
@@ -23,9 +24,18 @@ from PyQt6.QtCore import QThread, pyqtSignal
 
 from . import paths
 
-#: Redirects to a versioned build. Windows only; macOS and Linux have package
-#: managers that do this properly.
-SOURCE_URL = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
+#: A pinned build, not the rolling ``ffmpeg-release-essentials.zip`` alias, so
+#: the archive can be checked against a known hash. HTTPS alone proves you
+#: reached gyan.dev; it does not prove the bytes are the ones reviewed here.
+#:
+#: To bump: pick the new versioned URL, fetch ``<url>.sha256``, and paste both
+#: below. The app fails with a clear message rather than installing an
+#: unverified binary if this ever goes stale.
+SOURCE_URL = (
+	"https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-9.0.1-essentials_build.zip"
+)
+EXPECTED_SHA256 = "fec81ae03971d9dd4be3ebe02e263bd2ec1d789483f931bdba5f5715e65da2e9"
+FFMPEG_VERSION = "9.0.1"
 WANTED = ("ffmpeg.exe", "ffprobe.exe")
 
 
@@ -63,10 +73,17 @@ class FFmpegInstaller(QThread):
 		tmp_zip = None
 		try:
 			self.progress.emit(-1, "Contacting server…")
-			tmp_zip = self._download()
+			tmp_zip, digest = self._download()
 			if self._cancelled:
 				self.done.emit(False, "Cancelled.")
 				return
+
+			self.progress.emit(-1, "Verifying download…")
+			if digest != EXPECTED_SHA256:
+				raise RuntimeError(
+					"the download did not match its expected checksum, so it "
+					"was discarded. Nothing was installed."
+				)
 
 			self.progress.emit(-1, "Unpacking…")
 			target = self._extract(tmp_zip)
@@ -83,21 +100,24 @@ class FFmpegInstaller(QThread):
 
 	# -- steps -------------------------------------------------------------
 
-	def _download(self) -> str:
+	def _download(self) -> tuple[str, str]:
+		"""Stream to a temp file, hashing as we go. Returns (path, sha256)."""
 		req = urllib.request.Request(SOURCE_URL, headers={"User-Agent": "shira-ui"})
 		fd, tmp_path = tempfile.mkstemp(suffix=".zip")
 		os.close(fd)
+		digest = hashlib.sha256()
 
 		with urllib.request.urlopen(req, timeout=60) as resp, open(tmp_path, "wb") as out:
 			total = int(resp.headers.get("Content-Length", 0))
 			read = 0
 			while True:
 				if self._cancelled:
-					return tmp_path
+					return tmp_path, ""
 				chunk = resp.read(256 * 1024)
 				if not chunk:
 					break
 				out.write(chunk)
+				digest.update(chunk)
 				read += len(chunk)
 				if total:
 					pct = int(read * 100 / total)
@@ -107,7 +127,7 @@ class FFmpegInstaller(QThread):
 					)
 				else:
 					self.progress.emit(-1, f"Downloading FFmpeg… {read // 1_000_000} MB")
-		return tmp_path
+		return tmp_path, digest.hexdigest()
 
 	def _extract(self, zip_path: str) -> Path:
 		out_dir = managed_dir()

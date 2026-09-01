@@ -281,6 +281,12 @@ GPL redistribution obligations entirely. **Locate** remains available for
 anyone who already has `ffmpeg.exe`, and `winget install Gyan.FFmpeg` still
 works if they prefer.
 
+The download is pinned to a specific FFmpeg build and checked against a
+SHA-256 hash before anything is unpacked; a mismatch is discarded and nothing
+is installed. To move to a newer FFmpeg, update `SOURCE_URL` and
+`EXPECTED_SHA256` in `shiraui/ffmpeg_setup.py` — the publisher serves the hash
+at `<url>.sha256`.
+
 <details>
 <summary>How the packaged app runs downloads</summary>
 
