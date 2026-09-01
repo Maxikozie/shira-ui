@@ -80,13 +80,64 @@ Failures are per-track: exceptions are logged and counted, the loop continues, a
 
 ### GUI
 
-`shira_ui.py` does **not** shell out — it imports `shiradl.cli.cli` and calls it in a `QThread` with `standalone_mode=False`, building an argv list from the widgets. To surface progress it redirects stdout into `EmittingStream`, which splits on `\n`/`\r` and re-emits; lines prefixed `\r` (yt-dlp progress) overwrite the last block in the `QTextEdit` instead of appending. `DummyBuffer` exists only because yt-dlp reaches for `sys.stdout.buffer`.
+The interface is the `shiraui/` package; `shira_ui.py` is a 5-line launcher shim
+that keeps the documented `python shira_ui.py` command working. `shiraui` cannot
+collide with upstream's `shiradl`, so the whole GUI tree is fork-owned and
+upstream never touches it. Its tests live in `tests_ui/` — deliberately not in
+`tests/`, which is upstream's.
 
-Every widget value is passed as an explicit CLI flag, so GUI defaults silently win over `config.json` for those options. Adding a CLI option means wiring it into both the Advanced tab and `start_download()`. When merging upstream, diff `cli.py`'s `@click.option` list against the flags `start_download()` emits — that string-built argv is the fork's one real coupling point to upstream, and nothing enforces it.
+`shiraui/runner.py` launches `pythonw.exe -u -m shiradl` via **QProcess**, one
+process per link. It does *not* import `cli.cli` in-process. Four reasons, each
+a defect in the old design:
+
+- **stderr.** `cli.py` binds its logging handler to stderr, but the old GUI only
+  did `redirect_stdout` — so every `logger.*` call was invisible and a missing
+  ffmpeg looked like a dead button. Separate QProcess channels fix it.
+- **Cancel.** `shira_cli()` is one blocking call with no interruption point;
+  only killing a child process can stop it.
+- **`Dl.soundcloud` latches** True and never resets (`dl.py:85`) while all URLs
+  share one `Dl`, so a mixed YouTube+SoundCloud batch corrupts later tracks.
+  One process per link sidesteps it without touching `shiradl/`.
+- **`setWorkingDirectory`** keeps `--log-level DEBUG`'s `info.json` dumps out of
+  the user's folders.
+
+The child always runs at `INFO` (or `DEBUG`). Never pass the user's verbosity
+through: the progress lines the UI parses — `Downloading "..." (track j/N from
+URL i/M)` and the `Done (N error(s))` sentinel — are `logger.info`, so `WARNING`
+would silently delete the progress bar and completion summary. The "Log detail"
+combo filters client-side instead.
+
+Completion is read from the `Done (N error(s))` sentinel, never the exit code:
+`cli.py` returns 0 even when every track failed.
+
+Per-file download percentage is **not obtainable**. `dl.py` passes `quiet: True`
+to yt-dlp, which suppresses its progress output entirely; getting it back would
+mean editing `dl.py`. Progress is therefore track-level, with an indeterminate
+bar inside a track.
+
+`shiraui/argsbuilder.py` is the one place argv is built, and the fork's only
+real coupling to upstream — nothing enforces it at runtime. When merging a new
+upstream version, diff it against `cli.py`'s `@click.option` list. Verified
+against 1.8.5.
+
+`--no-config-file` is always passed. Click flags are one-way (there is no
+`--no-overwrite`), so an unticked box emits nothing and a `true` in
+`~/.shiradl/config.json` would win and be unreachable from the UI.
+
+**Safety:** `--temp-path` is `shutil.rmtree`'d after every track (`dl.py:261`).
+It is never a user-typed path — `shiraui/paths.py` always appends its own
+unique `run-<pid>-<ts>` leaf, so the worst rmtree target is a directory the app
+made seconds earlier. Stale `run-*` dirs are swept at startup, because
+cancelling kills the child and skips shiradl's own `finally`.
+
+Theming is Fusion + `QPalette` + one QSS `string.Template` with a token dict per
+theme (`shiraui/theme.py`). Fusion is mandatory: the `windows11` style routes
+buttons, combos, progress bars and scrollbars through the native engine and
+ignores QSS. Light/dark uses `QStyleHints.setColorScheme()` (Qt 6.11).
 
 ## Fork-specific notes
 
 - `PyQt6` is deliberately **not** in `pyproject.toml` — that file describes the upstream `shiradl` distribution, and keeping it untouched avoids a conflict on every future merge. Install PyQt6 separately.
-- The GUI's cookies checkbox hardcodes `~/.shira/cookies.txt`, while the CLI config lives at `~/.shiradl/config.json`. Different directories, and the checkbox silently does nothing if the file is absent.
+- `qtawesome` is optional and documented in the README, not `pyproject.toml`. The icon layer falls back to `QStyle.StandardPixmap` and then to Unicode glyphs, and is tested with qtawesome absent.
 - `shiradl/` uses tabs; `shira_ui.py` uses 4 spaces. Match the file you're editing.
 - `Dl.get_audio_codec` invokes bare `ffprobe` from PATH, ignoring `--ffmpeg-location`.

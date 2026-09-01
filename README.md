@@ -4,9 +4,11 @@ A lightweight PyQt6 interface for [shira](https://github.com/KraXen72/shira) —
 
 ### Features
 - Supports YouTube, YouTube Music, and SoundCloud
-- Uses existing `cookies.txt` and config from `~/.shiradl/config.json`
-- Real-time output logging
-- Button to open download folder
+- Light and dark themes, remembered between launches
+- Queue several links at once, or drop a `links.txt` onto the window
+- Live progress, a working Cancel button, and a colour-coded activity log
+- Plain-language advanced options, collapsed by default
+- Your settings are remembered and are always what actually runs
 
 ### Requirements
 - Python 3.11+ (upstream `shiradl` now sets `requires-python = ">=3.11"`)
@@ -28,9 +30,23 @@ pip install -e .
 pip install PyQt6
 ```
 
+Icons are optional. Install `qtawesome` for them; without it the app falls
+back to built-in icons and Unicode glyphs and looks correct either way.
+
+```bash
+pip install qtawesome
+```
+
 ### Run
 ```bash
 python shira_ui.py
+```
+
+The interface lives in the `shiraui/` package; `shira_ui.py` is a small
+launcher. Run the interface's tests with:
+
+```bash
+python -m pytest tests_ui
 ```
 
 ### Troubleshooting
